@@ -30,18 +30,18 @@ app = Flask(__name__)
 def capture():
     image_data = request.files['image'].read()
     image_rgb = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.IMREAD_COLOR)
-    image_rgb = cv2.resize(image_rgb, (1500, int(1500 * image_rgb.shape[:2][0] / image_rgb.shape[:2][1])))
+    image_rgb = cv2.resize(image_rgb, (800, int(800 * image_rgb.shape[:2][0] / image_rgb.shape[:2][1])))
     face_locations = list(set(face_recognition.face_locations(image_rgb,model="hog")))
     if len(face_locations) > 1:
         for i in list(itertools.combinations(face_locations, 2)):
             top1, right1, bottom1, left1, top2, right2, bottom2, left2 = i[0]+i[1]
             if check_overlap([bottom1,left1,top1,right1],[bottom2,left2,top2,right2]):
                 face_locations.remove(i[1])
-    # for top, right, bottom, left in face_locations:
-    #     cv2.rectangle(image_rgb, (left, top), (right, bottom), (0, 0, 255), 2)
-    # cv2.imwrite("letsgo.png",image_rgb)
+    for top, right, bottom, left in face_locations:
+        cv2.rectangle(image_rgb, (left, top), (right, bottom), (0, 0, 255), 2)
+    cv2.imwrite("static/letsgo.png",image_rgb)
+    print(face_locations)
     if len(face_locations) > 1:
-        print(face_locations)
         cv2.imwrite("letsgoerror.png",image_rgb)
         return jsonify({'success': False})
     else:
@@ -61,11 +61,13 @@ def hello_world():
 </head>
 <body>
     <video id="video" autoplay></video>
+    <img id="bounded" src="/static/letsgo.png" />
     <canvas id="canvas" width="640" height="480"></canvas>
 
     <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
+        let video = document.getElementById('video');
+        let canvas = document.getElementById('canvas');
+        let bounded = document.getElementById('bounded');
         const captureButton = document.getElementById('captureButton');
         var width = 640;
         var height = 480;
@@ -94,7 +96,9 @@ def hello_world():
         function openNewTab() {
             window.open("https://www.google.com", "_blank");
         }
-
+        function loadImage() {
+            bounded.src = "/static/letsgo.png?rand="+Math.random().toString();
+        }
         function checkFaces() {
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -121,7 +125,8 @@ def hello_world():
                 });
             });
         }
-        var t=setInterval(checkFaces,1000*0.2);
+        var t=setInterval(checkFaces,1000*0.3);
+        var t=setInterval(loadImage,1000);
     </script>
 </body>
 </html>"""
