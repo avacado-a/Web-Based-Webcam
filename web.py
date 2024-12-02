@@ -19,7 +19,7 @@ def capture():
     dets, scores, idx = detector.run(image_rgb, 1)
     acd = 0
     for i in range(len(dets)):
-        if scores[i] > 0.7:
+        if scores[i] > 0.5:
             acd+=1
             print(dets[i],scores[i])
             d = dets[i]
