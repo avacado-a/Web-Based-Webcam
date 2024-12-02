@@ -1,10 +1,11 @@
 from flask import Flask, request, jsonify
-from PIL import Image
-import time
-import face_recognition
+#from PIL import Image
+#import time
+#import face_recognition
 import numpy as np
 import cv2
 import itertools
+import dlib
 
 def check_overlap(rect1, rect2):
     """Checks if two rectangles overlap.
@@ -28,20 +29,25 @@ app = Flask(__name__)
 
 @app.route('/capture', methods=['POST'])
 def capture():
+    detector = dlib.get_frontal_face_detector()
     image_data = request.files['image'].read()
     image_rgb = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.IMREAD_COLOR)
     image_rgb = cv2.resize(image_rgb, (800, int(800 * image_rgb.shape[:2][0] / image_rgb.shape[:2][1])))
-    face_locations = list(set(face_recognition.face_locations(image_rgb,model="hog")))
-    if len(face_locations) > 1:
-        for i in list(itertools.combinations(face_locations, 2)):
-            top1, right1, bottom1, left1, top2, right2, bottom2, left2 = i[0]+i[1]
-            if check_overlap([bottom1,left1,top1,right1],[bottom2,left2,top2,right2]):
-                face_locations.remove(i[1])
-    for top, right, bottom, left in face_locations:
-        cv2.rectangle(image_rgb, (left, top), (right, bottom), (0, 0, 255), 2)
+    dets, scores, idx = detector.run(image_rgb, 1)
+    # if len(face_locations) > 1:
+    #     for d,e in list(itertools.combinations(face_locations, 2)):
+    #         left1, top1, right1, bottom1, left2, top2, right2, bottom2 = d.left(), d.top(), d.right(), d.bottom(), e.left(), e.top(), e.right(), e.bottom() 
+    #         if check_overlap([bottom1,left1,top1,right1],[bottom2,left2,top2,right2]):
+    #             face_locations.remove(d)
+    faces = []
+    for i in range(len(dets)):
+        if scores[i] > 0.7:
+            print(dets[i],scores[i])
+            faces.append(dets[i])
+    for d in dets:
+        cv2.rectangle(image_rgb, (d.left(), d.top()), (d.right(), d.bottom()), (0, 0, 255), 2)
     cv2.imwrite("static/letsgo.png",image_rgb)
-    print(face_locations)
-    if len(face_locations) > 1:
+    if len(list(dets)) > 1:
         cv2.imwrite("letsgoerror.png",image_rgb)
         return jsonify({'success': False})
     else:
@@ -71,10 +77,12 @@ def hello_world():
         const captureButton = document.getElementById('captureButton');
         var width = 640;
         var height = 480;
+        var lastValue = true;
         navigator.mediaDevices.getUserMedia({
                     video: {
                         width: { ideal: 4000 },//{ ideal: 1920 },
-                        height: { ideal: 4000 }//{ ideal: 1080 }
+                        height: { ideal: 4000 },//{ ideal: 1080 }
+                        facingMode: { exact: "user" }
                     }
                 })
                 .then(function(stream) {
@@ -117,15 +125,18 @@ def hello_world():
                         console.log('Image saved successfully!');
                     } else {
                         console.log('Error saving image');
-                        openNewTab();
+                        if (lastValue) {
+                            openNewTab();
+                        }
                     }
+                    lastValue = data.success;
                 })
                 .catch(error => {
                     console.error('Error sending image:', error);
                 });
             });
         }
-        var t=setInterval(checkFaces,1000*0.3);
+        var t=setInterval(checkFaces,1000*1);
         var t=setInterval(loadImage,1000);
     </script>
 </body>
