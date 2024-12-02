@@ -1,54 +1,33 @@
 from flask import Flask, request, jsonify
 #from PIL import Image
-#import time
+import time
 #import face_recognition
 import numpy as np
 import cv2
 import itertools
 import dlib
 
-def check_overlap(rect1, rect2):
-    """Checks if two rectangles overlap.
-
-    Args:
-        rect1 (tuple): (x1, y1, x2, y2) coordinates of the first rectangle.
-        rect2 (tuple): (x1, y1, x2, y2) coordinates of the second rectangle.
-
-    Returns:
-        bool: True if rectangles overlap, False otherwise.
-    """
-    x1_1, y1_1, x2_1, y2_1 = rect1
-    x1_2, y1_2, x2_2, y2_2 = rect2
-    if x1_1 > x2_2 or x2_1 < x1_2:
-        return False
-    if y1_1 > y2_2 or y2_1 < y1_2:
-        return False
-    return True
-
 app = Flask(__name__)
 
 @app.route('/capture', methods=['POST'])
 def capture():
+    a = time.perf_counter()
     detector = dlib.get_frontal_face_detector()
     image_data = request.files['image'].read()
     image_rgb = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.IMREAD_COLOR)
-    image_rgb = cv2.resize(image_rgb, (800, int(800 * image_rgb.shape[:2][0] / image_rgb.shape[:2][1])))
+    image_rgb = cv2.resize(image_rgb, (600, int(600 * image_rgb.shape[:2][0] / image_rgb.shape[:2][1])))
     dets, scores, idx = detector.run(image_rgb, 1)
-    # if len(face_locations) > 1:
-    #     for d,e in list(itertools.combinations(face_locations, 2)):
-    #         left1, top1, right1, bottom1, left2, top2, right2, bottom2 = d.left(), d.top(), d.right(), d.bottom(), e.left(), e.top(), e.right(), e.bottom() 
-    #         if check_overlap([bottom1,left1,top1,right1],[bottom2,left2,top2,right2]):
-    #             face_locations.remove(d)
-    faces = []
+    acd = 0
     for i in range(len(dets)):
         if scores[i] > 0.7:
+            acd+=1
             print(dets[i],scores[i])
-            faces.append(dets[i])
-    for d in dets:
-        cv2.rectangle(image_rgb, (d.left(), d.top()), (d.right(), d.bottom()), (0, 0, 255), 2)
+            d = dets[i]
+            cv2.rectangle(image_rgb, (d.left(), d.top()), (d.right(), d.bottom()), (0, int(255*(scores[i]/2)), 0), 2)
+            cv2.putText(image_rgb,"Score:"+str(scores[i]*50)+"% ",(d.right(), d.bottom()),cv2.FONT_HERSHEY_COMPLEX,1,(0,0,255))        
     cv2.imwrite("static/letsgo.png",image_rgb)
-    if len(list(dets)) > 1:
-        cv2.imwrite("letsgoerror.png",image_rgb)
+    if acd > 1:
+        cv2.imwrite("static/letsgoerror.png",image_rgb)
         return jsonify({'success': False})
     else:
         return jsonify({'success': True})
@@ -68,12 +47,14 @@ def hello_world():
 <body>
     <video id="video" autoplay></video>
     <img id="bounded" src="/static/letsgo.png" />
+    <img id="detection" src="/static/letsgo.png" />
     <canvas id="canvas" width="640" height="480"></canvas>
 
     <script>
         let video = document.getElementById('video');
         let canvas = document.getElementById('canvas');
         let bounded = document.getElementById('bounded');
+        let detection = document.getElementById('detection');
         const captureButton = document.getElementById('captureButton');
         var width = 640;
         var height = 480;
@@ -107,6 +88,9 @@ def hello_world():
         function loadImage() {
             bounded.src = "/static/letsgo.png?rand="+Math.random().toString();
         }
+        function loadDetectImage() {
+            detection.src = "/static/letsgoerror.png?rand="+Math.random().toString();
+        }
         function checkFaces() {
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -136,8 +120,9 @@ def hello_world():
                 });
             });
         }
-        var t=setInterval(checkFaces,1000*1);
+        var t=setInterval(checkFaces,1000*0.5);
         var t=setInterval(loadImage,1000);
+        var t=setInterval(loadDetectImage,1000);
     </script>
 </body>
 </html>"""
