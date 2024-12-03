@@ -1,11 +1,11 @@
 from flask import Flask, request, jsonify
-#from PIL import Image
+from PIL import Image
 import time
 #import face_recognition
 import numpy as np
 import cv2
-import itertools
 import dlib
+import os
 
 app = Flask(__name__)
 
@@ -15,7 +15,8 @@ def capture():
     detector = dlib.get_frontal_face_detector()
     image_data = request.files['image'].read()
     image_rgb = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.IMREAD_COLOR)
-    image_rgb = cv2.resize(image_rgb, (600, int(600 * image_rgb.shape[:2][0] / image_rgb.shape[:2][1])))
+    # image_rgb = cv2.cvtColor(cv2.resize(image_rgb, (600, int(600 * image_rgb.shape[:2][0] / image_rgb.shape[:2][1]))),cv2.COLOR_BGR2GRAY)
+    image_rgb = cv2.cvtColor(cv2.resize(image_rgb, (int(image_rgb.shape[:2][1]/4), int(image_rgb.shape[:2][0]/4))),cv2.COLOR_BGR2GRAY)
     dets, scores, idx = detector.run(image_rgb, 1)
     acd = 0
     for i in range(len(dets)):
@@ -24,7 +25,7 @@ def capture():
             print(dets[i],scores[i])
             d = dets[i]
             cv2.rectangle(image_rgb, (d.left(), d.top()), (d.right(), d.bottom()), (0, int(255*(scores[i]/2)), 0), 2)
-            cv2.putText(image_rgb,"Score:"+str(scores[i]*50)+"% ",(d.right(), d.bottom()),cv2.FONT_HERSHEY_COMPLEX,1,(0,0,255))        
+            cv2.putText(image_rgb,"Score:"+str(scores[i]*(100/2.2))+"% ",(d.right(), d.bottom()),cv2.FONT_HERSHEY_COMPLEX,0.5,(0,0,255))        
     cv2.imwrite("static/letsgo.png",image_rgb)
     if acd > 1:
         cv2.imwrite("static/letsgoerror.png",image_rgb)
@@ -121,7 +122,7 @@ def hello_world():
             });
         }
         var t=setInterval(checkFaces,1000*0.5);
-        var t=setInterval(loadImage,1000);
+        var t=setInterval(loadImage,1000*1);
         var t=setInterval(loadDetectImage,1000);
     </script>
 </body>
