@@ -128,4 +128,9 @@ def hello_world():
 </html>"""
 
 if __name__ == '__main__':
+    os.remove("static/letsgoerror.png")
+    os.remove("static/letsgo.png")
+    img = Image.new(mode="RGB", size=(200, 200))
+    img.save("static/letsgoerror.png")
+    img.save("static/letsgo.png")
     app.run(debug=True)
