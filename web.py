@@ -1,51 +1,19 @@
 from flask import Flask, request, jsonify
 from PIL import Image
 import time
-import face_recognition
+#import face_recognition
 import numpy as np
 import cv2
-import itertools
-
-def check_overlap(rect1, rect2):
-    """Checks if two rectangles overlap.
-
-    Args:
-        rect1 (tuple): (x1, y1, x2, y2) coordinates of the first rectangle.
-        rect2 (tuple): (x1, y1, x2, y2) coordinates of the second rectangle.
-
-    Returns:
-        bool: True if rectangles overlap, False otherwise.
-    """
-    x1_1, y1_1, x2_1, y2_1 = rect1
-    x1_2, y1_2, x2_2, y2_2 = rect2
-    if x1_1 > x2_2 or x2_1 < x1_2:
-        return False
-    if y1_1 > y2_2 or y2_1 < y1_2:
-        return False
-    return True
+import os
 
 app = Flask(__name__)
 
 @app.route('/capture', methods=['POST'])
 def capture():
     image_data = request.files['image'].read()
-    image_rgb = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.IMREAD_COLOR)
-    image_rgb = cv2.resize(image_rgb, (800, int(800 * image_rgb.shape[:2][0] / image_rgb.shape[:2][1])))
-    face_locations = list(set(face_recognition.face_locations(image_rgb,model="hog")))
-    if len(face_locations) > 1:
-        for i in list(itertools.combinations(face_locations, 2)):
-            top1, right1, bottom1, left1, top2, right2, bottom2, left2 = i[0]+i[1]
-            if check_overlap([bottom1,left1,top1,right1],[bottom2,left2,top2,right2]):
-                face_locations.remove(i[1])
-    for top, right, bottom, left in face_locations:
-        cv2.rectangle(image_rgb, (left, top), (right, bottom), (0, 0, 255), 2)
-    cv2.imwrite("static/letsgo.png",image_rgb)
-    print(face_locations)
-    if len(face_locations) > 1:
-        cv2.imwrite("letsgoerror.png",image_rgb)
-        return jsonify({'success': False})
-    else:
-        return jsonify({'success': True})
+    cv2_image = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+    cv2.imwrite("letsgo.png",cv2_image)
+    return jsonify({'success': True})
 
 
 
@@ -57,24 +25,22 @@ def hello_world():
 <html>
 <head>
     <link rel="icon" type="image/png" href="/static/lgo.png"> 
-    <title> Think Ahead! | Scholarship Applications</title>
 </head>
 <body>
     <video id="video" autoplay></video>
-    <img id="bounded" src="/static/letsgo.png" />
     <canvas id="canvas" width="640" height="480"></canvas>
-
     <script>
         let video = document.getElementById('video');
         let canvas = document.getElementById('canvas');
         let bounded = document.getElementById('bounded');
-        const captureButton = document.getElementById('captureButton');
+        let detection = document.getElementById('detection');
         var width = 640;
         var height = 480;
         navigator.mediaDevices.getUserMedia({
                     video: {
                         width: { ideal: 4000 },//{ ideal: 1920 },
-                        height: { ideal: 4000 }//{ ideal: 1080 }
+                        height: { ideal: 4000 },//{ ideal: 1080 }
+                        facingMode: { exact: "user" }
                     }
                 })
                 .then(function(stream) {
@@ -92,14 +58,7 @@ def hello_world():
             .catch(function(error) {
                 console.error('Error accessing media devices.', error);
             });
-
-        function openNewTab() {
-            window.open("https://www.google.com", "_blank");
-        }
-        function loadImage() {
-            bounded.src = "/static/letsgo.png?rand="+Math.random().toString();
-        }
-        function checkFaces() {
+        function check() {
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             canvas.toBlob(function(blob) {
@@ -117,7 +76,6 @@ def hello_world():
                         console.log('Image saved successfully!');
                     } else {
                         console.log('Error saving image');
-                        openNewTab();
                     }
                 })
                 .catch(error => {
@@ -125,8 +83,7 @@ def hello_world():
                 });
             });
         }
-        var t=setInterval(checkFaces,1000*0.3);
-        var t=setInterval(loadImage,1000);
+        var t=setInterval(check,1000*0.05);
     </script>
 </body>
 </html>"""
