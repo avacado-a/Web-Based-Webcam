@@ -12,12 +12,12 @@ app = Flask(__name__)
 def capture():
     image_data = request.files['image'].read()
     cv2_image = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.IMREAD_COLOR)
-    cv2.imwrite("static/letsgo.png",cv2_image)
+    cv2.imwrite("src/static/letsgo.png",cv2_image)
     return jsonify({'success': True})
 
-@app.route('/show', methods=['POST'])
-def capture():
-    return send_file("letsgo.png")
+@app.route('/show')
+def show():
+    return send_file("/workspaces/Web-Based-Webcam/src/static/letsgo.png")
 
 
 
@@ -92,4 +92,4 @@ def hello_world():
 </html>"""
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0",debug=True)
+    app.run(host="0.0.0.0",debug=False)
